@@ -86,8 +86,9 @@ test =  BeautifulSoup(source_page)
         page=br.open(urlAnnonce)
         source=page.read()
         soup = BeautifulSoup(source)
-        allVariable = soup.findAll('script')
-        print soup
+        ListeAllVariable = soup.findAll('script',{'type':"text/javascript"})
+        for AllVariable in ListeAllVariable:
+            print AllVariable
 
 
     def ParsePage(self,urlPage,nbPage=0):
