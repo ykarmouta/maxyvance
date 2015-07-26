@@ -10,6 +10,7 @@ from urlparse import urlparse
 from elasticsearch import Elasticsearch
 import json
 from geopy.geocoders import Nominatim
+from datetime import datetime
 
 #~  import shelve => sauv et lecture obj python
 
@@ -18,17 +19,17 @@ from DiversFonction import *
 
 
 class LeBonCoin:
-    """ Permet de recuperer les annonces immo
+    """ Permet de recuperer les annonces le bon coin
     """
     def __init__(self):
         self.liste_annonces=[]
         self.geolocator = Nominatim()
+
     def LirePage(self,urlPage):
         """Permet de recuperer les annonces immo d'une page
         """
         br=mechanize.Browser()
         br.set_handle_robots(False)
-
         ## recuperation du code html de la page
         page=br.open(urlPage)
         source=page.read()
@@ -37,7 +38,13 @@ class LeBonCoin:
         for annonce in liste_annonces_page:
             dico={}
             html=BeautifulSoup(str(annonce))
-            try:
+            lien_annonce =  html.find_all('a')[0].get('href')
+            if "compteperso.leboncoin.fr" not in lien_annonce:
+                self.lireAnnonce(lien_annonce)
+            """
+                page_annonce = br.open(dico['lien'])
+source_page = page_annonce.read()
+test =  BeautifulSoup(source_page)
                 lieu=html.select("[class~=placement]")[0].string.encode('utf-8').strip()
                 lieu=lieu.replace('\xc3\xa2', 'a')
                 lieu=lieu.replace('\xc3\xb4', 'o')
@@ -60,16 +67,28 @@ class LeBonCoin:
                     date=str(html.select("[class~=date]")[0].find_all('div')[0].string)+";"+str(html.select("[class~=date]")[0].find_all('div')[1].string)
                     dico['titre']=title
                     dico['location']=location
-                    dico['lien']=html.find_all('a')[0].get('href')
-                    dico['date']=date
-                    try:
-                        dico['img']=html.select("[class~=image-and-nb]")[0].find_all('img')[0]['src']
-                    except:
-                        print "pas de photo"
-                    json_annonce = json.dumps(dico)
-                    self.liste_annonces.append(json_annonce)
-            except:
-                "erreur"
+
+                dico['lien']=html.find_all('a')[0].get('href')
+                dico['date']=date
+                try:
+                    dico['img']=html.select("[class~=image-and-nb]")[0].find_all('img')[0]['src']
+                except:
+                    print "pas de photo"
+                json_annonce = json.dumps(dico)
+                self.liste_annonces.append(json_annonce)
+        except:
+            "erreur"
+        """
+
+    def lireAnnonce(self,urlAnnonce):
+        br=mechanize.Browser()
+        br.set_handle_robots(False)
+        page=br.open(urlAnnonce)
+        source=page.read()
+        soup = BeautifulSoup(source)
+        allVariable = soup.findAll('script')
+        print soup
+
 
     def ParsePage(self,urlPage,nbPage=0):
         """Permet de recuperer les annonces immo d'une page
@@ -87,7 +106,7 @@ class LeBonCoin:
         else:
             nb_total_page = nbPage
         page = 1
-        while page < nb_total_page :
+        while nb_total_page >= page :
             try:
                 self.LirePage(urlPage+"?o=%s"%(page))
             except:
@@ -98,9 +117,14 @@ class LeBonCoin:
     def VoirAnnonces(self):
         print self.liste_annonces
 
+    def SendAnnoncesElastic(self):
+        es = Elasticsearch([{'host': '192.168.1.99', 'port': 9200}])
+        for annonces in self.liste_annonces:
+            es.index(index='leboncoin',doc_type='annonceimmo',body=annonces)
+
 
 t = LeBonCoin()
-t.ParsePage("http://www.leboncoin.fr/ventes_immobilieres/offres/",4)
-print t.VoirAnnonces()
+t.ParsePage("http://www.leboncoin.fr/ventes_immobilieres/offres/",2)
+t.SendAnnoncesElastic()
 
 
