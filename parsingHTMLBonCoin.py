@@ -36,49 +36,11 @@ class LeBonCoin:
         soup = BeautifulSoup(source)
         liste_annonces_page=soup.select("[class~=list-lbc]")[0].find_all('a')
         for annonce in liste_annonces_page:
-            dico={}
             html=BeautifulSoup(str(annonce))
             lien_annonce =  html.find_all('a')[0].get('href')
             if "compteperso.leboncoin.fr" not in lien_annonce:
                 self.lireAnnonce(lien_annonce)
-            """
-                page_annonce = br.open(dico['lien'])
-source_page = page_annonce.read()
-test =  BeautifulSoup(source_page)
-                lieu=html.select("[class~=placement]")[0].string.encode('utf-8').strip()
-                lieu=lieu.replace('\xc3\xa2', 'a')
-                lieu=lieu.replace('\xc3\xb4', 'o')
-                pattern="\s*(.+)\s*\/\s*(.*)\s*"
-                match=returnMatching(pattern, lieu)
-                if match:
-                    lieu=str(unidecode(match(1).decode('utf-8'))).replace(" ",";")+";"+str(unidecode(match(2).decode('utf-8'))).replace(" ",";")+';France'
-                    geoloc = self.geolocator.geocode(lieu,geometry="geojson")
-                    title=html.select("[class~=title]")[0].string.encode('utf-8').strip()
-                    location= geoloc.raw['geojson']
-                    title=str(unidecode(title.decode('utf-8')))
-                    try:
-                        prix=html.select("[class~=price]")[0].string
-                        pattern="\s*([0-9 ]+).*"
-                        match=returnMatching(pattern, prix)
-                        prix=match(1).replace(" ","")
-                        dico['prix']=int(prix)
-                    except:
-                        print "pas de prix"
-                    date=str(html.select("[class~=date]")[0].find_all('div')[0].string)+";"+str(html.select("[class~=date]")[0].find_all('div')[1].string)
-                    dico['titre']=title
-                    dico['location']=location
 
-                dico['lien']=html.find_all('a')[0].get('href')
-                dico['date']=date
-                try:
-                    dico['img']=html.select("[class~=image-and-nb]")[0].find_all('img')[0]['src']
-                except:
-                    print "pas de photo"
-                json_annonce = json.dumps(dico)
-                self.liste_annonces.append(json_annonce)
-        except:
-            "erreur"
-        """
 
     def lireAnnonce(self,urlAnnonce):
         br=mechanize.Browser()
@@ -86,9 +48,31 @@ test =  BeautifulSoup(source_page)
         page=br.open(urlAnnonce)
         source=page.read()
         soup = BeautifulSoup(source)
-        ListeAllVariable = soup.findAll('script',{'type':"text/javascript"})
+        """ListeAllVariable = soup.findAll('script',{'type':"text/javascript"})"""
+        ListeAllVariable = soup.findAll('script')
+        dico_annonce = {}
         for AllVariable in ListeAllVariable:
-            print AllVariable
+            if AllVariable.string != None:
+                if 'utag_data' in AllVariable.string:
+                    tab_var = AllVariable.string.split('{', 1)[1].rsplit('}', 1)[0].replace('\n','').replace(' ','').replace('"','').split(',')
+                    for var in tab_var:
+                        dico_annonce[var.split(':')[0]] = var.split(':')[1]
+                if 'polygon view, hide carto link'  in AllVariable.string:
+                    if 'trim("city ")' in AllVariable.string:
+                        geoloc = self.geolocator.geocode('%s %s'%(dico_annonce['city'].replace('_',' '),dico_annonce['cp']),geometry="geojson")
+                        location= geoloc.raw['geojson']
+                        dico_annonce['location']=location
+                        dico_annonce['zone']='zone'
+                    if 'trim("address ")' in AllVariable.string:
+                        location_annonce = {}
+                        location_annonce['type']='Point'
+                        longitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[1].split('=')[1])
+                        latitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[0].split('=')[1])
+                        location_annonce['coordinates']=[longitude,latitude]
+                        dico_annonce['zone']='point'
+                        dico_annonce['location'] =location_annonce
+        json_annonce = json.dumps(dico_annonce)
+        self.liste_annonces.append(json_annonce)
 
 
     def ParsePage(self,urlPage,nbPage=0):
@@ -125,7 +109,7 @@ test =  BeautifulSoup(source_page)
 
 
 t = LeBonCoin()
-t.ParsePage("http://www.leboncoin.fr/ventes_immobilieres/offres/",2)
+t.ParsePage("http://www.leboncoin.fr/ventes_immobilieres/offres/")
 t.SendAnnoncesElastic()
 
 
