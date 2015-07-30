@@ -39,7 +39,10 @@ class LeBonCoin:
             html=BeautifulSoup(str(annonce))
             lien_annonce =  html.find_all('a')[0].get('href')
             if "compteperso.leboncoin.fr" not in lien_annonce:
-                self.lireAnnonce(lien_annonce)
+                try:
+                    self.lireAnnonce(lien_annonce)
+                except:
+                    print 'erreur'
 
 
     def lireAnnonce(self,urlAnnonce):
@@ -60,7 +63,14 @@ class LeBonCoin:
                 if 'polygon view, hide carto link'  in AllVariable.string:
                     if 'trim("city ")' in AllVariable.string:
                         geoloc = self.geolocator.geocode('%s %s'%(dico_annonce['city'].replace('_',' '),dico_annonce['cp']),geometry="geojson")
-                        location= geoloc.raw['geojson']
+                        try:
+                            location= geoloc.raw['geojson']
+                        except:
+                            try:
+                                geoloc = self.geolocator.geocode('%s'%(dico_annonce['city'].replace('_',' ')),geometry="geojson")
+                                location= geoloc.raw['geojson']
+                            except:
+                                print 'erreur'
                         dico_annonce['location']=location
                         dico_annonce['zone']='zone'
                     if 'trim("address ")' in AllVariable.string:
@@ -71,6 +81,15 @@ class LeBonCoin:
                         location_annonce['coordinates']=[longitude,latitude]
                         dico_annonce['zone']='point'
                         dico_annonce['location'] =location_annonce
+        try:
+            liste_images = soup.select("[class~=lbcImages]")[0].find_all('meta')
+            url_images = []
+        except:
+            url_images = None
+        if url_images != None:
+            for images in liste_images:
+                url_images.append(images.attrs['content'])
+        dico_annonce['images']=url_images
         json_annonce = json.dumps(dico_annonce)
         self.liste_annonces.append(json_annonce)
 
