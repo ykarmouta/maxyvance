@@ -62,16 +62,20 @@ class LeBonCoin:
                         dico_annonce[var.split(':')[0]] = var.split(':')[1]
                 if 'polygon view, hide carto link'  in AllVariable.string:
                     if 'trim("city ")' in AllVariable.string:
-                        geoloc = self.geolocator.geocode('%s %s'%(dico_annonce['city'].replace('_',' '),dico_annonce['cp']),geometry="geojson")
+                        geoloc = self.geolocator.geocode('%s, %s, FRANCE'%(dico_annonce['city'].replace('_',' '),dico_annonce['cp']),geometry="geojson")
                         try:
                             location= geoloc.raw['geojson']
                         except:
                             try:
-                                geoloc = self.geolocator.geocode('%s'%(dico_annonce['city'].replace('_',' ')),geometry="geojson")
+                                geoloc = self.geolocator.geocode('%s, FRANCE'%(dico_annonce['city'].replace('_',' ')),geometry="geojson")
                                 location= geoloc.raw['geojson']
                             except:
-                                print 'erreur'
-                        dico_annonce['location']=location
+                                location_annonce = {}
+                                location_annonce['type']='Point'
+                                longitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[1].split('=')[1])
+                                latitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[0].split('=')[1])
+                                location_annonce['coordinates']=[longitude,latitude]
+                        dico_annonce['location']=location_annonce
                         dico_annonce['zone']='zone'
                     if 'trim("address ")' in AllVariable.string:
                         location_annonce = {}
