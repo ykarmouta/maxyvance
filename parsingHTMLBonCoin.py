@@ -41,8 +41,8 @@ class LeBonCoin:
             if "compteperso.leboncoin.fr" not in lien_annonce:
                 try:
                     self.lireAnnonce(lien_annonce)
-                except:
-                    print 'erreur'
+                except Exception,e:
+                    print 'erreur pendant la fonction lire annonce %s : %s'%(lien_annonce,e)
 
 
     def lireAnnonce(self,urlAnnonce):
@@ -75,8 +75,9 @@ class LeBonCoin:
                                 longitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[1].split('=')[1])
                                 latitude = float(AllVariable.string.replace('\n','').replace(' ','').replace('"','').split(';')[0].split('=')[1])
                                 location_annonce['coordinates']=[longitude,latitude]
-                        dico_annonce['location']=location_annonce
+                                location=location_annonce
                         dico_annonce['zone']='zone'
+                        dico_annonce['location']=location
                     if 'trim("address ")' in AllVariable.string:
                         location_annonce = {}
                         location_annonce['type']='Point'
@@ -117,8 +118,14 @@ class LeBonCoin:
         while nb_total_page >= page :
             try:
                 self.LirePage(urlPage+"?o=%s"%(page))
-            except:
-                print "erreur"
+            except Exception,e:
+                print "erreur lors de la fonction LirePage %s: %s"%((urlPage+"?o=%s"%(page)),e)
+            if page%10 == 0:
+                try:
+                    self.SendAnnoncesElastic()
+                    self.liste_annonces = []
+                except Exception,e:
+                    print 'erreur lors de la fontion SendAnnoncesElastic: %s'%e
             page= page+1
             print "page %s"%(page)
 
